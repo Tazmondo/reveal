@@ -16,6 +16,22 @@ pub struct SourcemapNode {
     pub children: Vec<SourcemapNode>,
 }
 
+impl SourcemapNode {
+    pub fn lua_file(&self) -> Option<&str> {
+        let Some(path) = self.file_paths.iter().find(|item| {
+            if let Some(extension) = item.extension() {
+                extension == "lua"
+            } else {
+                false
+            }
+        }) else {
+            return None;
+        };
+
+        path.to_str()
+    }
+}
+
 pub fn parse_sourcemap(sourcemap: &str) -> Result<SourcemapNode, Error> {
     from_str(&sourcemap)
 }
