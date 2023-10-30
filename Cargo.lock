@@ -33,15 +33,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6245d59a3e82a7fc217c5828a6692dbc6dfb63a0c8c90495621f7b9d79704a0e"
 
 [[package]]
-name = "dependencyproject"
-version = "0.1.0"
-dependencies = [
- "full_moon",
- "serde",
- "serde_json",
-]
-
-[[package]]
 name = "derive_more"
 version = "0.99.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -162,6 +153,15 @@ name = "regex-syntax"
 version = "0.6.29"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f162c6dd7b008981e4d40210aca20b4bd0f9b60ca9271061b07f78537722f2e1"
+
+[[package]]
+name = "reveal"
+version = "0.1.0"
+dependencies = [
+ "full_moon",
+ "serde",
+ "serde_json",
+]
 
 [[package]]
 name = "rustc_version"
