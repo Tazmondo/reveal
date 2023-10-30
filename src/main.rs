@@ -1,9 +1,11 @@
 // Written by Tazm0ndo
 // Thanks to the team behind full-moon, and the team behind Rojo!
 
-use std::{fs, path::PathBuf, thread};
+use std::{fs, path::PathBuf, thread, vec};
 
-use full_moon::ast::{self, Block, Expression, LastStmt, Stmt, Value, Var};
+use full_moon::ast::{
+    self, Block, Call, Expression, FunctionArgs, Index, LastStmt, Prefix, Stmt, Suffix, Value, Var,
+};
 use serde::Deserialize;
 use serde_json::from_str;
 
@@ -23,12 +25,31 @@ struct SourcemapNode {
 const STACK_SIZE: usize = 4 * 1024 * 1024;
 const ROOT: &str = "./example/";
 
+fn handle_prefix(prefix: &Prefix) -> Option<Vec<String>> {
+    match prefix {
+        Prefix::Name(name) => Some(vec![name.to_string()]),
+        Prefix::Expression(expression) => handle_expression(expression),
+        _ => None,
+    }
+}
+
 fn handle_var(var: &Var) -> Option<Vec<String>> {
     match var {
         Var::Name(token) => Some(vec![token.to_string()]),
         Var::Expression(expression) => {
-            println!("VarExpression: {}", expression);
-            None
+            let Some(mut out_vec) = handle_prefix(expression.prefix()) else {
+                return None;
+            };
+
+            out_vec.extend(expression.suffixes().filter_map(|suffix| match suffix {
+                Suffix::Index(index) => match index {
+                    Index::Dot { dot, name } => Some(name.to_string()),
+                    _ => None,
+                },
+                _ => None,
+            }));
+
+            Some(out_vec)
         }
         _ => None,
     }
@@ -75,12 +96,46 @@ fn handle_assignment(assignment: &ast::Assignment) {
 }
 
 fn handle_function_call(call: &ast::FunctionCall) {
-    let prefix = call.prefix();
+    // println!("{}", call.prefix());
+    let prefix = handle_prefix(call.prefix());
 
-    println!("{}", prefix);
-    // if prefix == "require" {
-    //     call.suffixes().for_each(|suffix| println!("{}", suffix));
-    // }
+    let Some(prefix) = prefix else { return };
+
+    if prefix.len() != 1 {
+        return;
+    }
+
+    let prefix = &prefix[0];
+
+    if prefix == "require" {
+        let mut suffixes = call.suffixes();
+        let suffix = suffixes.next().expect("Require did not have a suffix.");
+
+        let index: Option<i32> = match suffix {
+            Suffix::Call(call) => match call {
+                Call::AnonymousCall(args) => match args {
+                    FunctionArgs::Parentheses {
+                        parentheses,
+                        arguments,
+                    } => {
+                        let require_expression = arguments
+                            .first()
+                            .expect("Require found without an argument!");
+                        let require_expression = require_expression.value();
+
+                        let parsed_expression = handle_expression(require_expression);
+
+                        println!("Required: {:?}", parsed_expression);
+
+                        None
+                    }
+                    _ => None,
+                },
+                _ => None,
+            },
+            _ => None,
+        };
+    }
 }
 
 fn handle_if(if_statement: &ast::If) {
