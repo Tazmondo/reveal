@@ -43,7 +43,7 @@ fn handle_var(var: &Var) -> Option<Vec<String>> {
 
             out_vec.extend(expression.suffixes().filter_map(|suffix| match suffix {
                 Suffix::Index(index) => match index {
-                    Index::Dot { dot, name } => Some(name.to_string()),
+                    Index::Dot { dot: _, name } => Some(name.to_string()),
                     _ => None,
                 },
                 _ => None,
@@ -111,11 +111,11 @@ fn handle_function_call(call: &ast::FunctionCall) {
         let mut suffixes = call.suffixes();
         let suffix = suffixes.next().expect("Require did not have a suffix.");
 
-        let index: Option<i32> = match suffix {
+        match suffix {
             Suffix::Call(call) => match call {
                 Call::AnonymousCall(args) => match args {
                     FunctionArgs::Parentheses {
-                        parentheses,
+                        parentheses: _,
                         arguments,
                     } => {
                         let require_expression = arguments
@@ -126,14 +126,12 @@ fn handle_function_call(call: &ast::FunctionCall) {
                         let parsed_expression = handle_expression(require_expression);
 
                         println!("Required: {:?}", parsed_expression);
-
-                        None
                     }
-                    _ => None,
+                    _ => (),
                 },
-                _ => None,
+                _ => (),
             },
-            _ => None,
+            _ => (),
         };
     }
 }
@@ -184,7 +182,6 @@ fn parse_script(script_node: &SourcemapNode) {
     if let Some(path) = path {
         let path = String::from(ROOT) + &path.to_string_lossy();
 
-        println!("Parsing: {}", path);
         let contents = fs::read_to_string(&path);
 
         match contents {
@@ -221,7 +218,11 @@ fn run() {
 
     let sourcemap: SourcemapNode = from_str(&sourcemap).expect("Could not parse sourcemap.json.");
 
-    parse_source(&sourcemap)
+    println!("Beginning parse!");
+    let start = std::time::Instant::now();
+    parse_source(&sourcemap);
+    let elapsed = start.elapsed();
+    println!("Parse finished in {}ms", elapsed.as_millis());
 }
 
 fn run_with_bigger_stack(func: fn() -> ()) {
