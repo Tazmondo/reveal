@@ -4,9 +4,11 @@
 use std::thread;
 
 const STACK_SIZE: usize = 4 * 1024 * 1024;
+const ROOT: &str = "./example";
 
 fn run() {
-    reveal::run("./example");
+    let path = ROOT.to_string() + "/";
+    reveal::run(&path);
 }
 
 fn run_with_bigger_stack(func: fn() -> ()) {

@@ -1,7 +1,7 @@
 mod ast_parse;
 mod sourcemap;
 
-use ast_parse::parse_script;
+use ast_parse::get_functions;
 
 use sourcemap::{parse_sourcemap, SourcemapNode};
 use std::fs;
@@ -11,7 +11,9 @@ fn parse_source(file_root: &str, source_root: &SourcemapNode) {
         || source_root.class_name == "Script"
         || source_root.class_name == "LocalScript"
     {
-        parse_script(file_root, source_root);
+        let funcs = get_functions(file_root, source_root);
+
+        funcs.iter().for_each(|f| println!("{:?}", f));
     } else {
         if source_root.name == "_Index" {
             return;
