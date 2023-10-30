@@ -1,3 +1,8 @@
+// This module extracts function calls from the AST.
+// I could have written this to be more versatile, but I only care about function calls
+// and this kind of code is just annoying to write
+// also not sure how i'd handle the enums of enums properly
+
 use std::{fs, path::Path, vec};
 
 use full_moon::ast::{
