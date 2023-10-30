@@ -1,79 +1,10 @@
-use std::{fs, vec};
+use std::{fs, path::Path, vec};
 
 use full_moon::ast::{
     self, Assignment, Block, Expression, FunctionCall, If, LastStmt, Stmt, Value,
 };
 
-use crate::sourcemap::SourcemapNode;
-
 type Functions<'a> = Vec<&'a FunctionCall>;
-
-// fn handle_expression(expression: &Expression) -> RequireArgs {
-//     match expression {
-//         Expression::Parentheses {
-//             contained: _,
-//             expression,
-//         } => handle_expression(expression),
-//         Expression::Value {
-//             value,
-//             type_assertion: _,
-//         } => handle_value(value),
-//         _ => None,
-//     }
-// }
-
-// fn handle_prefix(prefix: &Prefix) -> RequireArgs {
-//     match prefix {
-//         Prefix::Name(name) => vec![name.to_string()],
-//         Prefix::Expression(expression) => handle_expression(expression),
-//         _ => vec![],
-//     }
-// }
-
-// fn handle_function_call(call: &FunctionCall) -> RequireArgs {
-//     // println!("{}", call.prefix());
-//     let prefix = handle_prefix(call.prefix());
-
-//     let Some(prefix) = prefix else { return None };
-
-//     if prefix.len() != 1 {
-//         return None;
-//     }
-
-//     let prefix = &prefix[0];
-
-//     return if prefix == "require" {
-//         let mut suffixes = call.suffixes();
-//         let suffix = suffixes.next().expect("Require did not have a suffix.");
-
-//         match suffix {
-//             Suffix::Call(call) => match call {
-//                 Call::AnonymousCall(args) => match args {
-//                     FunctionArgs::Parentheses {
-//                         parentheses: _,
-//                         arguments,
-//                     } => {
-//                         let require_expression = arguments
-//                             .first()
-//                             .expect("Require found without an argument!");
-//                         let require_expression = require_expression.value();
-
-//                         let parsed_expression = handle_expression(require_expression);
-
-//                         println!("Required: {:?}", parsed_expression);
-
-//                         parsed_expression
-//                     }
-//                     _ => None,
-//                 },
-//                 _ => None,
-//             },
-//             _ => None,
-//         }
-//     } else {
-//         None
-//     };
-// }
 
 fn local_assignment_get_functions(assignment: &ast::LocalAssignment) -> Functions {
     assignment
@@ -157,34 +88,20 @@ fn block_get_functions(block: &Block) -> Functions {
     functions
 }
 
-pub fn get_functions(root: &str, script_node: &SourcemapNode) -> Result<Vec<FunctionCall>, String> {
-    let path = script_node.file_paths.iter().find(|item| {
-        if let Some(extension) = item.extension() {
-            extension == "lua"
-        } else {
-            false
+pub fn get_functions(path: &Path) -> Result<Vec<FunctionCall>, String> {
+    let contents = fs::read_to_string(path);
+
+    match contents {
+        Ok(contents) => {
+            let ast = full_moon::parse(&contents).unwrap().clone();
+
+            let funcs = block_get_functions(ast.nodes())
+                .into_iter()
+                .map(|func| func.clone())
+                .collect();
+
+            Ok(funcs)
         }
-    });
-
-    if let Some(path) = path {
-        let path = String::from(root) + &path.to_string_lossy();
-
-        let contents = fs::read_to_string(&path);
-
-        match contents {
-            Ok(contents) => {
-                let ast = full_moon::parse(&contents).unwrap().clone();
-
-                let funcs = block_get_functions(ast.nodes())
-                    .into_iter()
-                    .map(|func| func.clone())
-                    .collect();
-
-                Ok(funcs)
-            }
-            Err(err) => Err(err.to_string()),
-        }
-    } else {
-        Err(String::from("Could not get path with .lua extension"))
+        Err(err) => Err(format!("{}: {}", path.display(), err.to_string())),
     }
 }

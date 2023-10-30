@@ -17,7 +17,7 @@ pub struct SourcemapNode {
 }
 
 impl SourcemapNode {
-    pub fn lua_file(&self) -> Option<&str> {
+    pub fn lua_file(&self) -> Option<&PathBuf> {
         let Some(path) = self.file_paths.iter().find(|item| {
             if let Some(extension) = item.extension() {
                 extension == "lua"
@@ -28,7 +28,7 @@ impl SourcemapNode {
             return None;
         };
 
-        path.to_str()
+        Some(path)
     }
 }
 

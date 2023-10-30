@@ -1,19 +1,29 @@
 mod ast_parse;
+mod function_parse;
 mod sourcemap;
 
 use ast_parse::get_functions;
 
+use function_parse::print_function;
 use sourcemap::{parse_sourcemap, SourcemapNode};
-use std::fs;
+use std::{fs, path::PathBuf};
 
-fn parse_source(file_root: &str, source_root: &SourcemapNode) {
+fn parse_source(project_root: &str, source_root: &SourcemapNode) {
     if source_root.class_name == "ModuleScript"
         || source_root.class_name == "Script"
         || source_root.class_name == "LocalScript"
     {
-        let funcs = get_functions(file_root, source_root);
+        let Some(lua_file) = source_root.lua_file() else {
+            return;
+        };
 
-        funcs.iter().for_each(|f| println!("{:?}", f));
+        let lua_file = PathBuf::new().join(project_root).join(lua_file);
+
+        let funcs = get_functions(&lua_file).unwrap();
+
+        funcs
+            .iter()
+            .for_each(|item| print_function(&source_root.name, item));
     } else {
         if source_root.name == "_Index" {
             return;
@@ -22,7 +32,7 @@ fn parse_source(file_root: &str, source_root: &SourcemapNode) {
         source_root
             .children
             .iter()
-            .for_each(|node| parse_source(file_root, node))
+            .for_each(|node| parse_source(project_root, node))
     }
 }
 
