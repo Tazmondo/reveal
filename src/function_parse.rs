@@ -94,7 +94,7 @@ fn get_prefix(func: &FunctionCall) -> Option<String> {
     Some(prefix)
 }
 
-pub fn print_function(func: &FunctionCall) {
+pub fn _print_function(func: &FunctionCall) {
     let Some(prefix) = get_prefix(func) else {
         return;
     };
