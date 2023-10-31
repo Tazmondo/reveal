@@ -79,15 +79,23 @@ fn remove_preceding_comments(str: &String) -> Option<String> {
         .and_then(|str| Some(String::from(str.trim())))
 }
 
-pub fn print_function(file_path: &str, func: &FunctionCall) {
+fn get_prefix(func: &FunctionCall) -> Option<String> {
     let Some(prefix) = (match func.prefix() {
         Prefix::Name(prefix) => Some(prefix.to_string()),
         _ => None,
     }) else {
-        return;
+        return None;
     };
 
     let Some(prefix) = remove_preceding_comments(&prefix) else {
+        return None;
+    };
+
+    Some(prefix)
+}
+
+pub fn print_function(func: &FunctionCall) {
+    let Some(prefix) = get_prefix(func) else {
         return;
     };
 
@@ -97,6 +105,20 @@ pub fn print_function(file_path: &str, func: &FunctionCall) {
         let Some(require_path) = get_require_tokens(func) else {
             return;
         };
-        println!("{}: {:?} ", file_path, require_path);
+        println!("{:?} ", require_path);
+    }
+}
+
+pub fn get_require_argument(func: &FunctionCall) -> Option<Vec<String>> {
+    let Some(prefix) = get_prefix(func) else {
+        return None;
+    };
+
+    let is_require = prefix == "require";
+
+    if is_require {
+        get_require_tokens(func)
+    } else {
+        None
     }
 }
