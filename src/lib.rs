@@ -5,10 +5,10 @@ mod sourcemap;
 use ast_parse::get_functions;
 
 use function_parse::get_require_argument;
-use sourcemap::{parse_sourcemap, resolve_require, SourcemapNode};
+use sourcemap::{parse_sourcemap, resolve_require, SourcemapKey, SourcemapNode};
 use std::{collections::HashMap, fs, path::PathBuf};
 
-type RequireMap<'a> = HashMap<String, Vec<&'a SourcemapNode>>;
+type RequireMap<'a> = HashMap<SourcemapKey, Vec<&'a SourcemapNode>>;
 
 fn parse_source<'a>(
     project_root: &str,
@@ -30,7 +30,9 @@ fn parse_source<'a>(
 
             let lua_file = PathBuf::new().join(project_root).join(lua_file);
 
-            let key = lua_file.to_string_lossy().to_string();
+            let Some(key) = source_node.as_key() else {
+                return;
+            };
 
             let mut resolved_vector: Vec<&SourcemapNode> = Vec::new();
 
@@ -44,7 +46,7 @@ fn parse_source<'a>(
                         let resolved = resolve_require(node_path, &args);
 
                         if let Some(resolved) = resolved {
-                            println!("{} <- {}", source_node.name, resolved.name);
+                            // println!("{} <- {}", source_node.name, resolved.name);
                             resolved_vector.push(resolved);
                         } else {
                             println!(
@@ -57,7 +59,7 @@ fn parse_source<'a>(
                 }
             });
 
-            hashmap.insert(String::from(&key), resolved_vector);
+            hashmap.insert(key, resolved_vector);
         } else {
             if source_node.name == "_Index" {
                 return;
@@ -66,8 +68,8 @@ fn parse_source<'a>(
             source_node.children.iter().for_each(|node| {
                 let child_map = parse_source(project_root, node, node_path);
 
-                child_map.iter().for_each(|(key, value)| {
-                    let current_vec = hashmap.entry(key.to_string()).or_default();
+                child_map.into_iter().for_each(|(key, value)| {
+                    let current_vec = hashmap.entry(key).or_default();
 
                     current_vec.extend(value);
                 })
@@ -101,16 +103,17 @@ pub fn run(root: &str) {
     let resolve_map = parse_source(root, &source_root, &mut parent_nodes);
 
     let elapsed = start.elapsed();
-    println!("Parse finished in {}ms", elapsed.as_millis());
 
+    // println!("{:#?}", resolve_map);
     resolve_map.iter().for_each(|(key, value)| {
         println!(
-            "Script: {} <- {:?}",
-            key,
+            "{:<30} Requires: {:?}\n",
+            key.name,
             value
                 .iter()
                 .map(|node| &node.name)
                 .collect::<Vec<&String>>()
         );
-    })
+    });
+    println!("Parse finished in {}ms", elapsed.as_millis());
 }
