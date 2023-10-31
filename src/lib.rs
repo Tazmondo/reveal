@@ -5,48 +5,63 @@ mod sourcemap;
 use ast_parse::get_functions;
 
 use function_parse::get_require_argument;
-use sourcemap::{parse_sourcemap, SourcemapNode};
+use sourcemap::{parse_sourcemap, resolve_require, SourcemapNode};
 use std::{fs, path::PathBuf};
 
 fn parse_source<'a>(
     project_root: &str,
     source_node: &'a SourcemapNode,
-    parent_nodes: &mut Vec<&'a SourcemapNode>, // Allows for resolving of "script" and "Parent" in requires
+    node_path: &mut Vec<&'a SourcemapNode>, // Allows for resolving of "script" and "Parent" in requires
 ) {
-    if source_node.class_name == "ModuleScript"
-        || source_node.class_name == "Script"
-        || source_node.class_name == "LocalScript"
-    {
-        let Some(lua_file) = source_node.lua_file() else {
-            return;
-        };
+    node_path.push(source_node);
 
-        let lua_file = PathBuf::new().join(project_root).join(lua_file);
+    let mut closure = || {
+        if source_node.class_name == "ModuleScript"
+            || source_node.class_name == "Script"
+            || source_node.class_name == "LocalScript"
+        {
+            let Some(lua_file) = source_node.lua_file() else {
+                return;
+            };
 
-        let funcs = get_functions(&lua_file).unwrap();
+            let lua_file = PathBuf::new().join(project_root).join(lua_file);
 
-        funcs.iter().for_each(|item| {
-            let req_args = get_require_argument(item);
+            let funcs = get_functions(&lua_file).unwrap();
 
-            match req_args {
-                Some(args) => println!("{:?}", args),
-                _ => {}
+            funcs.iter().for_each(|item| {
+                let req_args = get_require_argument(item);
+
+                match req_args {
+                    Some(args) => {
+                        let resolved = resolve_require(node_path, &args);
+
+                        if let Some(resolved) = resolved {
+                            println!("{} <- {}", source_node.name, resolved.name)
+                        } else {
+                            println!(
+                                "Failed to resolve file: {}. Require: {:?}",
+                                source_node.name, args
+                            );
+                        }
+                    }
+                    _ => {}
+                }
+            });
+        } else {
+            if source_node.name == "_Index" {
+                return;
             }
-        });
-    } else {
-        if source_node.name == "_Index" {
-            return;
+
+            source_node
+                .children
+                .iter()
+                .for_each(|node| parse_source(project_root, node, node_path));
         }
+    };
 
-        parent_nodes.push(source_node);
+    closure();
 
-        source_node
-            .children
-            .iter()
-            .for_each(|node| parse_source(project_root, node, parent_nodes));
-
-        parent_nodes.pop();
-    }
+    node_path.pop();
 }
 
 pub fn run(root: &str) {
