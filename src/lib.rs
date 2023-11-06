@@ -64,17 +64,17 @@ fn parse_source<'a>(
             });
 
             hashmap.insert(key, resolved_vector);
-            }
+        }
 
-            source_node.children.iter().for_each(|node| {
-                let child_map = parse_source(project_root, node, node_path);
+        source_node.children.iter().for_each(|node| {
+            let child_map = parse_source(project_root, node, node_path);
 
-                child_map.into_iter().for_each(|(key, value)| {
-                    let current_vec = hashmap.entry(key).or_default();
+            child_map.into_iter().for_each(|(key, value)| {
+                let current_vec = hashmap.entry(key).or_default();
 
-                    current_vec.extend(value);
-                })
-            });
+                current_vec.extend(value);
+            })
+        });
     };
 
     closure();
@@ -82,6 +82,30 @@ fn parse_source<'a>(
     node_path.pop();
 
     hashmap
+}
+
+fn create_require_tree(
+    resolve_map: &RequireMap,
+    root: &SourcemapKey,
+    max_depth: Option<u32>,
+    depth: Option<u32>,
+) -> termtree::Tree<String> {
+    let depth = depth.unwrap_or(0) + 1;
+
+    if max_depth.is_some() && depth >= max_depth.unwrap() {
+        return termtree::Tree::new(root.name.clone());
+    }
+
+    let requires = resolve_map.get(root).unwrap();
+
+    termtree::Tree::new(root.name.clone()).with_leaves(requires.iter().map(|require| {
+        create_require_tree(
+            resolve_map,
+            &require.as_key().unwrap(),
+            max_depth,
+            Some(depth),
+        )
+    }))
 }
 
 pub fn run(root: &str) {
@@ -105,15 +129,23 @@ pub fn run(root: &str) {
     let elapsed = start.elapsed();
 
     // println!("{:#?}", resolve_map);
-    resolve_map.iter().for_each(|(key, value)| {
-        println!(
-            "{:<30} Requires: {:?}\n",
-            key.name,
-            value
-                .iter()
-                .map(|node| &node.name)
-                .collect::<Vec<&String>>()
-        );
-    });
+    // resolve_map.iter().for_each(|(key, value)| {
+    //     println!(
+    //         "{:<30} Requires: {:?}\n",
+    //         key.name,
+    //         value
+    //             .iter()
+    //             .map(|node| &node.name)
+    //             .collect::<Vec<&String>>()
+    //     );
+    // });
     println!("Parse finished in {}ms", elapsed.as_millis());
+
+    let combat_key = resolve_map
+        .keys()
+        .find(|key| key.name == "CombatService")
+        .unwrap();
+
+    let tree = create_require_tree(&resolve_map, combat_key, Some(4), None);
+    println!("{}", tree);
 }
