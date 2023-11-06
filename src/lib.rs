@@ -20,6 +20,10 @@ fn parse_source<'a>(
     let mut hashmap: RequireMap = HashMap::new();
 
     let mut closure = || {
+        if source_node.name == "_Index" {
+            return;
+        }
+
         if source_node.class_name == "ModuleScript"
             || source_node.class_name == "Script"
             || source_node.class_name == "LocalScript"
@@ -60,9 +64,6 @@ fn parse_source<'a>(
             });
 
             hashmap.insert(key, resolved_vector);
-        } else {
-            if source_node.name == "_Index" {
-                return;
             }
 
             source_node.children.iter().for_each(|node| {
@@ -74,7 +75,6 @@ fn parse_source<'a>(
                     current_vec.extend(value);
                 })
             });
-        }
     };
 
     closure();
