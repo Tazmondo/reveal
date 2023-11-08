@@ -9,7 +9,7 @@ use sourcemap::{parse_sourcemap, resolve_require, SourcemapNode};
 use std::{collections::HashMap, fs, path::PathBuf};
 use structurize::RequireMap;
 
-use crate::structurize::create_require_tree;
+use crate::structurize::{create_require_tree, output_map};
 
 fn parse_source<'a>(
     project_root: &str,
@@ -118,11 +118,13 @@ pub fn run(root: &str) {
     // });
     println!("Parse finished in {}ms", elapsed.as_millis());
 
-    let combat_key = resolve_map
-        .keys()
-        .find(|key| key.name == "CombatService")
-        .unwrap();
+    // let combat_key = resolve_map
+    //     .keys()
+    //     .find(|key| key.name == "CombatService")
+    //     .unwrap();
 
-    let tree = create_require_tree(&resolve_map, combat_key, Some(4), None);
-    println!("{}", tree);
+    // let tree = create_require_tree(&resolve_map, combat_key, Some(4), None);
+    // println!("{}", tree);
+
+    output_map(&resolve_map, &PathBuf::from("./reveal-js/require-map.json"));
 }

@@ -16,7 +16,7 @@ const svg = d3.select("#my_dataviz")
     `translate(${margin.left}, ${margin.top})`);
 
 const dataUrl = "https://raw.githubusercontent.com/holtzy/D3-graph-gallery/master/DATA/data_network.json"
-d3.json("./testdata").then(function (data) {
+d3.json("./require-map.json").then(function (data) {
   var color = d3.scaleOrdinal(d3.schemeCategory10);
 
   var simulation = d3.forceSimulation()

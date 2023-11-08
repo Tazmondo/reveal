@@ -1,13 +1,9 @@
 // This module is for converting the require lists into either a tree format, or a JSON graph format.
+use crate::sourcemap::{SourcemapKey, SourcemapNode};
+use serde::Serialize;
 use std::io::prelude::*;
 use std::path::PathBuf;
 use std::{collections::HashMap, fs::File};
-
-use serde::Serialize;
-
-use crate::ast_parse::get_functions;
-use crate::function_parse::get_require_argument;
-use crate::sourcemap::{resolve_require, SourcemapKey, SourcemapNode};
 
 #[derive(Debug, Serialize)]
 struct Node {
@@ -28,10 +24,47 @@ struct Graph {
 }
 
 impl Graph {
-    fn new() -> Graph {
+    fn from_map(map: &RequireMap) -> Graph {
+        // We iterate twice in this function, since we need to know the assigned id for each node
+        // in order to generate the links.
+        // So on the first pass we generate all the nodes and link the ids to the unique file path of each one.
+        // Then on the second pass we generate all links, using the map to find the correct id.
+
+        let mut node_id_map: HashMap<&PathBuf, i32> = HashMap::new();
+
+        let mut node_count = 0;
+
+        let mut nodes: Vec<Node> = Vec::new();
+        let mut links: Vec<Link> = Vec::new();
+
+        map.keys().for_each(|key| {
+            node_id_map.insert(&key.file_path, node_count);
+            nodes.push(Node {
+                id: node_count,
+                name: key.name.clone(),
+            });
+
+            node_count += 1;
+        });
+
+        map.iter().for_each(|(key, nodes)| {
+            nodes
+                .iter()
+                .filter_map(|node| node.lua_file())
+                .for_each(|path| {
+                    let source_id = node_id_map.get(path).unwrap();
+                    let target_id = node_id_map.get(&key.file_path).unwrap();
+
+                    links.push(Link {
+                        source: *source_id,
+                        target: *target_id,
+                    });
+                });
+        });
+
         Graph {
-            nodes: vec![],
-            links: vec![],
+            nodes: nodes,
+            links: links,
         }
     }
 }
@@ -62,10 +95,11 @@ pub fn create_require_tree(
     }))
 }
 
-pub fn generate_file(text: &String) {
-    let mut file = File::create("./testdata").unwrap();
+pub fn output_map(map: &RequireMap, path: &PathBuf) {
+    let mut file = File::create(path).unwrap();
 
-    let output_buffer = text.as_bytes();
+    let output =
+        serde_json::to_string(&Graph::from_map(map)).expect("Could not convert graph data to JSON");
 
-    file.write(output_buffer).unwrap();
+    file.write(output.as_bytes()).unwrap();
 }
