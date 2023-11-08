@@ -1,14 +1,15 @@
 mod ast_parse;
 mod function_parse;
 mod sourcemap;
+mod structurize;
 
 use ast_parse::get_functions;
-
 use function_parse::get_require_argument;
-use sourcemap::{parse_sourcemap, resolve_require, SourcemapKey, SourcemapNode};
+use sourcemap::{parse_sourcemap, resolve_require, SourcemapNode};
 use std::{collections::HashMap, fs, path::PathBuf};
+use structurize::RequireMap;
 
-type RequireMap<'a> = HashMap<SourcemapKey, Vec<&'a SourcemapNode>>;
+use crate::structurize::create_require_tree;
 
 fn parse_source<'a>(
     project_root: &str,
@@ -82,30 +83,6 @@ fn parse_source<'a>(
     node_path.pop();
 
     hashmap
-}
-
-fn create_require_tree(
-    resolve_map: &RequireMap,
-    root: &SourcemapKey,
-    max_depth: Option<u32>,
-    depth: Option<u32>,
-) -> termtree::Tree<String> {
-    let depth = depth.unwrap_or(0) + 1;
-
-    if max_depth.is_some() && depth >= max_depth.unwrap() {
-        return termtree::Tree::new(root.name.clone());
-    }
-
-    let requires = resolve_map.get(root).unwrap();
-
-    termtree::Tree::new(root.name.clone()).with_leaves(requires.iter().map(|require| {
-        create_require_tree(
-            resolve_map,
-            &require.as_key().unwrap(),
-            max_depth,
-            Some(depth),
-        )
-    }))
 }
 
 pub fn run(root: &str) {
