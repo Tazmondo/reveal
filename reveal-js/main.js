@@ -2,9 +2,9 @@ import './style.css'
 import * as d3 from "d3"
 
 // set the dimensions and margins of the graph
-const margin = { top: 10, right: 30, bottom: 30, left: 40 },
-  width = 400 - margin.left - margin.right,
-  height = 400 - margin.top - margin.bottom;
+const margin = { top: 0, right: 0, bottom: 0, left: 0 },
+  width = 1500 - margin.left - margin.right,
+  height = 1500 - margin.top - margin.bottom;
 
 // append the svg object to the body of the page
 const svg = d3.select("#my_dataviz")
@@ -17,12 +17,40 @@ const svg = d3.select("#my_dataviz")
 
 const dataUrl = "https://raw.githubusercontent.com/holtzy/D3-graph-gallery/master/DATA/data_network.json"
 d3.json("./require-map.json").then(function (data) {
+  let nodes = data.nodes
+  let links = data.links
+
+  let node_y = {}
+
+  for (let node of nodes) {
+    node_y[node.id] = 0
+  }
+
+  for (let link of links) {
+    node_y[link.source] += 1
+    node_y[link.target] -= 1
+  }
+
+  for (let node in node_y) {
+    if (node_y[node] > 0) {
+      node_y[node] = 1
+    }
+    else if (node_y[node] < 0) {
+      node_y[node] = -1
+    }
+  }
+
+
   var color = d3.scaleOrdinal(d3.schemeCategory10);
 
   var simulation = d3.forceSimulation()
-    .force("link", d3.forceLink().id(function (d) { return d.id; }).distance(40))
-    .force("charge", d3.forceManyBody())
-    .force("center", d3.forceCenter(width / 2, height / 2));
+    .force("link", d3.forceLink().id(d => d.id).distance(15))
+    .force("charge", d3.forceManyBody().strength(-500))
+    // .force("center", d3.forceCenter(width / 2, height / 2).strength(1))
+    .force("x", d3.forceX(width / 2))
+    .force("y", d3.forceY().y(d => node_y[d.id] * (height / 2) + (height / 2)).strength(0.1))
+  // .force("collide", d3.forceCollide(d => 25))
+  // .force("radial", d3.forceRadial(350, width / 2, height / 2).strength(1))
 
   var link = svg.append("g")
     .attr("class", "links")
@@ -48,7 +76,7 @@ d3.json("./require-map.json").then(function (data) {
 
   node.append("text")
     .attr("dx", 6)
-    .text(function (d) { return d.id; })
+    .text(function (d) { return d.name; })
     .attr("fill", function (d) { return "#ffffff" })
 
   simulation
